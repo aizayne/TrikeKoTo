@@ -12,9 +12,16 @@ import '../../widgets/primary_button.dart';
 
 /// Email + password sign-in. After Auth succeeds we read the
 /// `drivers/{email}` doc and route based on `status`:
-///   Active   → /driver/dashboard
-///   Pending  → /driver/pending  (and sign out)
-///   Missing  → error toast      (and sign out)
+///   Active    → /driver/dashboard
+///   Pending   → /driver/pending  (and sign out)
+///   Suspended → error toast      (and sign out)
+///   Missing   → check admin gate:
+///     · admin     → /admin  (stay signed in)
+///     · non-admin → error toast (and sign out)
+///
+/// This is the only auth surface in the app, so we have to handle the
+/// admin-only case here too — otherwise admins with no `drivers/` doc
+/// would be booted before they could reach /admin.
 class DriverLoginScreen extends ConsumerStatefulWidget {
   const DriverLoginScreen({super.key});
 
@@ -54,6 +61,15 @@ class _DriverLoginScreenState extends ConsumerState<DriverLoginScreen> {
       if (!mounted) return;
 
       if (driver == null) {
+        // No driver doc — last chance to keep them signed in is the
+        // admin gate. If the admins/{email} doc exists, send them to
+        // the admin panel; otherwise sign them out with a toast.
+        final isAdmin = await db.isAdmin(email);
+        if (!mounted) return;
+        if (isAdmin) {
+          context.go('/admin');
+          return;
+        }
         await auth.signOut();
         _toast('No driver profile found for this account.');
         return;
