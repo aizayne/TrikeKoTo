@@ -9,12 +9,13 @@ import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/admin/admin_panel_screen.dart';
 import 'screens/commuter/commuter_booking_screen.dart';
 import 'screens/driver/driver_dashboard_screen.dart';
+import 'screens/driver/driver_history_screen.dart';
 import 'screens/driver/driver_login_screen.dart';
+import 'screens/driver/driver_profile_screen.dart';
 import 'screens/driver/driver_register_screen.dart';
 import 'screens/driver/pending_verification_screen.dart';
 import 'screens/feedback_screen.dart';
 import 'screens/landing_screen.dart';
-import 'screens/placeholder_screen.dart';
 
 /// Routing rules:
 ///   - `/` and `/commuter` and `/feedback` are public.
@@ -76,11 +77,11 @@ GoRouter buildRouter(Ref ref) {
       ),
       GoRoute(
         path: '/driver/profile',
-        builder: (_, _) => const PlaceholderScreen(title: 'Profile'),
+        builder: (_, _) => const DriverProfileScreen(),
       ),
       GoRoute(
         path: '/driver/history',
-        builder: (_, _) => const PlaceholderScreen(title: 'Ride history'),
+        builder: (_, _) => const DriverHistoryScreen(),
       ),
       GoRoute(
         path: '/admin',

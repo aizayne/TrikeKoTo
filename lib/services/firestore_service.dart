@@ -227,6 +227,29 @@ class FirestoreService {
         .map((s) => s.docs.map(Ride.fromFirestore).toList());
   }
 
+  /// Every ride ever assigned to this driver, regardless of status.
+  /// Sorted newest-first. Used by the driver's Ride History screen.
+  ///
+  /// We sort client-side (instead of `.orderBy('createdAt')`) so the
+  /// query stays single-field and avoids needing a composite index in
+  /// Firestore — the result set per driver is small enough for that
+  /// to be a non-issue.
+  Stream<List<Ride>> watchRidesForDriver(String driverEmail) {
+    final email = normalizeEmail(driverEmail);
+    return rides
+        .where('assignedDriver', isEqualTo: email)
+        .snapshots()
+        .map((s) {
+      final list = s.docs.map(Ride.fromFirestore).toList();
+      list.sort((a, b) {
+        final ta = a.createdAt?.millisecondsSinceEpoch ?? 0;
+        final tb = b.createdAt?.millisecondsSinceEpoch ?? 0;
+        return tb.compareTo(ta);
+      });
+      return list;
+    });
+  }
+
   /// The ride doc currently assigned to this driver and not yet
   /// completed. We only ever expect 0 or 1 — the accept transaction
   /// guarantees a driver can't grab a second ride while one is live —

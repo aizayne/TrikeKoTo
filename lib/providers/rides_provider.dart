@@ -68,6 +68,16 @@ final activeRideForDriverProvider = StreamProvider<Ride?>((ref) {
   return ref.watch(firestoreServiceProvider).watchActiveRideFor(email);
 });
 
+/// Every ride ever assigned to the current driver, newest first.
+/// Used by the driver's Ride History screen. Emits an empty list when
+/// no driver is signed in so the UI can render its "not signed in"
+/// state without a null check.
+final myRidesHistoryProvider = StreamProvider<List<Ride>>((ref) {
+  final email = ref.watch(authServiceProvider).currentEmail;
+  if (email == null) return Stream.value(const <Ride>[]);
+  return ref.watch(firestoreServiceProvider).watchRidesForDriver(email);
+});
+
 /// Final selector: rides this specific driver is currently being
 /// offered, sorted in priority order (top-of-rank first, then by
 /// distance, then newest first).
