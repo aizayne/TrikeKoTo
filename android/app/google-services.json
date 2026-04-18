@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "877860610923",
+    "firebase_url": "https://trikekoto-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "trikekoto",
+    "storage_bucket": "trikekoto.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:877860610923:android:c7e5bf159aa6c24955222e",
+        "android_client_info": {
+          "package_name": "com.example.trikekoto"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "877860610923-7ppc2nd56rntabdvgjbe4g2edngo2hqq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDAXyTOY-ou43KMJESLX2Uu7HHvZokruvE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "877860610923-7ppc2nd56rntabdvgjbe4g2edngo2hqq.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "877860610923-71v2sa789oiu75j0cofkqk9505jc57ia.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.trikekoto"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,123 @@
+// ============================================================
+// Firestore Security Rules — TrikeKoTo (Flutter)
+// ============================================================
+// Mirrors the React reference at trikekoto-web/firestore.rules.
+// Deploy with:  firebase deploy --only firestore:rules
+//
+// Collections:
+//   drivers/{driverEmail}        — driver profiles (email doc ID)
+//   active_drivers/{driverEmail} — live presence + GPS + FCM token
+//   rides/{rideId}               — commuter ride requests
+//   admins/{adminEmail}          — server-side admin list (doc existence = admin)
+//   feedback/{feedbackId}        — public feedback / issue reports
+//
+// Identity model:
+//   The app uses email as a document ID, so writes are gated on
+//   request.auth.token.email == driverEmail (case-insensitive).
+//
+// Admin gate:
+//   Admins are defined by the existence of an `admins/{email}` doc.
+//   Create those docs from the Firebase Console — never from the app.
+// ============================================================
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ─────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(email) {
+      return isSignedIn()
+          && request.auth.token.email.lower() == email.lower();
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+          && exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower()));
+    }
+
+    // Fields a driver can touch on their own profile.
+    // `status` is admin-only.
+    function driverFieldsOk() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['firstName', 'lastName', 'phone', 'plateNumber']);
+    }
+
+    // ── drivers/ ────────────────────────────────────────────
+    match /drivers/{driverEmail} {
+      allow read: if true;
+
+      allow create: if isSelf(driverEmail)
+                    && request.resource.data.email == driverEmail
+                    && request.resource.data.status == 'Pending Verification';
+
+      allow update: if (isSelf(driverEmail) && driverFieldsOk())
+                    || isAdmin();
+
+      allow delete: if isAdmin();
+    }
+
+    // ── active_drivers/ ─────────────────────────────────────
+    match /active_drivers/{driverEmail} {
+      allow read: if true;
+      allow write: if isSelf(driverEmail);
+    }
+
+    // ── rides/ ──────────────────────────────────────────────
+    match /rides/{rideId} {
+      allow read: if true;
+
+      allow create: if request.resource.data.status == 'searching'
+                    && request.resource.data.assignedDriver == null;
+
+      allow update: if
+        // Driver accepting a ride
+        (isSignedIn()
+          && resource.data.status == 'searching'
+          && request.resource.data.status == 'accepted'
+          && request.resource.data.assignedDriver.lower() == request.auth.token.email.lower())
+        ||
+        // Assigned driver completing/cancelling their own ride
+        (isSignedIn()
+          && resource.data.assignedDriver.lower() == request.auth.token.email.lower()
+          && request.resource.data.status in ['completed', 'cancelled'])
+        ||
+        // Commuter cancelling (no auth) — only flips status
+        (request.resource.data.status == 'cancelled'
+          && resource.data.status in ['searching', 'accepted'])
+        ||
+        // Commuter rating a completed ride — only rating/feedback can
+        // change, status stays 'completed', rating set exactly once.
+        (resource.data.status == 'completed'
+          && request.resource.data.status == 'completed'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'feedback', 'ratedAt'])
+          && request.resource.data.rating is int
+          && request.resource.data.rating >= 1
+          && request.resource.data.rating <= 5
+          && (resource.data.rating == null || !('rating' in resource.data)));
+
+      allow delete: if isAdmin();
+    }
+
+    // ── admins/ ─────────────────────────────────────────────
+    match /admins/{adminEmail} {
+      allow read: if isAdmin();
+      allow write: if false; // managed from Firebase Console only
+    }
+
+    // ── feedback/ ───────────────────────────────────────────
+    match /feedback/{feedbackId} {
+      allow read: if isAdmin();
+      allow create: if request.resource.data.message is string
+                    && request.resource.data.message.size() > 0
+                    && request.resource.data.message.size() <= 2000
+                    && request.resource.data.category in ['issue', 'suggestion', 'question', 'other'];
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "flutter": {
+    "platforms": {
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "trikekoto",
+          "configurations": {
+            "android": "1:877860610923:android:c7e5bf159aa6c24955222e",
+            "ios": "1:877860610923:ios:281ef5ee9a666fd655222e",
+            "macos": "1:877860610923:ios:281ef5ee9a666fd655222e",
+            "web": "1:877860610923:web:010d2ae54474bc2455222e",
+            "windows": "1:877860610923:web:bf4260dbba102b9155222e"
+          }
+        }
+      },
+      "android": {
+        "default": {
+          "projectId": "trikekoto",
+          "appId": "1:877860610923:android:c7e5bf159aa6c24955222e",
+          "fileOutput": "android/app/google-services.json"
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}
