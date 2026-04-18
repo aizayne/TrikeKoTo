@@ -32,10 +32,15 @@ jobs:
       - name: Build debug APK
         run: flutter build apk --debug
 
+      # Rename so the downloaded file is "TrikeKoTo.apk" instead of the
+      # default Flutter "app-debug.apk". Runs on Linux so we use mv.
+      - name: Rename APK
+        run: mv build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/TrikeKoTo.apk
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: trikekoto-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: TrikeKoTo
+          path: build/app/outputs/flutter-apk/TrikeKoTo.apk
           if-no-files-found: error
           retention-days: 30
