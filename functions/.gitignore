@@ -1,0 +1,18 @@
+# Compiled TypeScript
+lib/
+
+# Node modules
+node_modules/
+
+# Firebase emulator artefacts
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+pubsub-debug.log
+
+# Local env / credentials — never commit these
+.env
+.env.local
+.runtimeconfig.json
+service-account*.json
