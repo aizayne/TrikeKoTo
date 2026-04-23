@@ -35,6 +35,16 @@ class AuthService {
 
   Future<void> signOut() => _auth.signOut();
 
+  /// Sends a Firebase-hosted password reset email to [email]. The user
+  /// receives a link from `noreply@trikekoto.firebaseapp.com` that opens
+  /// a page where they can set a new password — no extra UI on our side.
+  ///
+  /// Email is normalised first so casing doesn't cause a "user-not-found"
+  /// when the actual Auth account was registered lowercase.
+  Future<void> sendPasswordReset(String email) {
+    return _auth.sendPasswordResetEmail(email: normalizeEmail(email));
+  }
+
   /// Removes the currently signed-in Firebase Auth account. We use this
   /// to roll back a half-finished registration: if the Firestore profile
   /// write fails after `register()` succeeded, deleting the Auth account

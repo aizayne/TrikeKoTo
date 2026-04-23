@@ -117,6 +117,89 @@ class _DriverLoginScreenState extends ConsumerState<DriverLoginScreen> {
     }
   }
 
+  /// Opens a small dialog pre-filled with whatever's in the email field,
+  /// then sends a password reset email via Firebase Auth.
+  ///
+  /// We deliberately show the same "If the email exists you'll get a
+  /// link" toast for both success AND user-not-found, so an attacker
+  /// can't probe which addresses are registered.
+  Future<void> _forgotPassword() async {
+    final initial = _emailCtrl.text.trim();
+    final controller = TextEditingController(text: initial);
+    final formKey = GlobalKey<FormState>();
+
+    final email = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reset password'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Enter the email for your account. We\'ll send a link '
+                'you can use to set a new password.',
+                style: TextStyle(color: AppColors.muted),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: controller,
+                autofocus: true,
+                keyboardType: TextInputType.emailAddress,
+                autocorrect: false,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  prefixIcon: Icon(LucideIcons.mail, size: 18),
+                ),
+                validator: (v) {
+                  final t = v?.trim() ?? '';
+                  if (t.isEmpty) return 'Email is required';
+                  if (!t.contains('@')) return 'Enter a valid email';
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (!formKey.currentState!.validate()) return;
+              Navigator.of(ctx).pop(controller.text.trim());
+            },
+            child: const Text('Send link'),
+          ),
+        ],
+      ),
+    );
+
+    controller.dispose();
+    if (email == null || email.isEmpty) return;
+
+    try {
+      await ref.read(authServiceProvider).sendPasswordReset(email);
+      if (!mounted) return;
+      _toast('If an account exists for $email, a reset link is on its way.');
+    } on FirebaseAuthException catch (e) {
+      // Same generic message for user-not-found so we don't leak
+      // whether the address is registered.
+      if (e.code == 'user-not-found') {
+        if (!mounted) return;
+        _toast('If an account exists for $email, a reset link is on its way.');
+        return;
+      }
+      _toast(_humanAuthError(e));
+    } catch (_) {
+      _toast('Could not send reset email. Try again in a moment.');
+    }
+  }
+
   void _toast(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
@@ -186,7 +269,14 @@ class _DriverLoginScreenState extends ConsumerState<DriverLoginScreen> {
                   validator: (v) =>
                       (v ?? '').isEmpty ? 'Password is required' : null,
                 ),
-                const SizedBox(height: 24),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _busy ? null : _forgotPassword,
+                    child: const Text('Forgot password?'),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 PrimaryButton(
                   label: 'Sign in',
                   icon: LucideIcons.logIn,
