@@ -1,5 +1,23 @@
 # TrikeKoTo Cloud Functions
 
+> **Status: written but not deployed (out of scope for v1 thesis build).**
+>
+> Deploying requires the Firebase Blaze plan, which in the Philippines
+> requires a one-time $10 USD prepayment to Google Cloud. For the v1
+> thesis demo we decided this push-notification layer is a nice-to-have:
+> the in-app Firestore stream already shows ride offers in real time
+> while the driver has the app open, which is the expected operating
+> mode for a small driver pool (Barangay Balaybay).
+>
+> The code is kept here ready to deploy in a future iteration — see the
+> "Deploy" section below for the one command needed once Blaze is on.
+>
+> What is lost without this deployed: drivers won't get a push
+> notification when the app is closed or backgrounded. They WILL still
+> see ride offers the moment they open the dashboard.
+
+## Overview
+
 Server-side push notification for ride offers.
 
 When a commuter creates a `rides/{rideId}` doc, the `onRideCreated` trigger
