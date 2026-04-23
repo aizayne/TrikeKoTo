@@ -1,4 +1,4 @@
-name: Build Debug APK
+name: Build Release APK
 
 on:
   push:
@@ -29,13 +29,41 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build debug APK
-        run: flutter build apk --debug
+      # ── Signing ────────────────────────────────────────────────────────────
+      # The keystore is stored as a base64 GitHub Secret because *.jks is
+      # binary. We decode it back into android/keystore/ and write a
+      # key.properties pointing at it. If the secret is missing (e.g. a fork
+      # build), the Gradle config falls back to debug signing automatically.
+      - name: Decode signing keystore
+        if: ${{ env.KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          mkdir -p android/keystore
+          echo "$KEYSTORE_BASE64" | base64 -d > android/keystore/trikekoto-release.jks
+
+      - name: Write key.properties
+        if: ${{ env.KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          cat > android/key.properties <<EOF
+          storeFile=keystore/trikekoto-release.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+
+      - name: Build release APK
+        run: flutter build apk --release
 
       # Rename so the downloaded file is "TrikeKoTo.apk" instead of the
-      # default Flutter "app-debug.apk". Runs on Linux so we use mv.
+      # default Flutter "app-release.apk".
       - name: Rename APK
-        run: mv build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/TrikeKoTo.apk
+        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/TrikeKoTo.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
