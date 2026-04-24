@@ -197,6 +197,21 @@ class FirestoreService {
     });
   }
 
+  /// Driver flips an `accepted` ride to `in_transit` once the commuter
+  /// has boarded. Stamps `onboardAt` so analytics can later compute
+  /// pickup-wait duration (acceptedAt → onboardAt) and ride duration
+  /// (onboardAt → completedAt) separately.
+  ///
+  /// Firestore rule allows this transition only when the caller is the
+  /// assigned driver and the prior status is exactly `accepted` — no
+  /// jumping straight from `searching`.
+  Future<void> markPassengerOnboard(String rideId) {
+    return rides.doc(rideId).update({
+      'status': AppConstants.rideInTransit,
+      'onboardAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   /// Driver-side cancellation (manual). Distinct from the commuter
   /// cancel and from going-offline cancellation, which uses
   /// [cancelRideOnDriverWentOffline] so the admin dashboard can tell
@@ -251,25 +266,35 @@ class FirestoreService {
   }
 
   /// The ride doc currently assigned to this driver and not yet
-  /// completed. We only ever expect 0 or 1 — the accept transaction
-  /// guarantees a driver can't grab a second ride while one is live —
-  /// so we collapse the snapshot down to a single nullable.
+  /// completed/cancelled. We only ever expect 0 or 1 — the accept
+  /// transaction guarantees a driver can't grab a second ride while
+  /// one is live — so we collapse the snapshot down to a single
+  /// nullable.
+  ///
+  /// "Live" means status is either `accepted` (driver en route to
+  /// pickup) or `in_transit` (passenger onboard, en route to dropoff).
+  /// We filter status client-side so adding new live states later
+  /// doesn't require touching a Firestore composite index.
   Stream<Ride?> watchActiveRideFor(String driverEmail) {
     final email = normalizeEmail(driverEmail);
     return rides
         .where('assignedDriver', isEqualTo: email)
-        .where('status', isEqualTo: AppConstants.rideAccepted)
         .snapshots()
         .map((s) {
-      if (s.docs.isEmpty) return null;
+      final live = s.docs
+          .map(Ride.fromFirestore)
+          .where((r) =>
+              r.status == RideStatus.accepted ||
+              r.status == RideStatus.inTransit)
+          .toList();
+      if (live.isEmpty) return null;
       // Newest first, just in case of any straggler doc.
-      final docs = s.docs.toList()
-        ..sort((a, b) {
-          final ta = (a.data()['acceptedAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
-          final tb = (b.data()['acceptedAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
-          return tb.compareTo(ta);
-        });
-      return Ride.fromFirestore(docs.first);
+      live.sort((a, b) {
+        final ta = a.acceptedAt?.millisecondsSinceEpoch ?? 0;
+        final tb = b.acceptedAt?.millisecondsSinceEpoch ?? 0;
+        return tb.compareTo(ta);
+      });
+      return live.first;
     });
   }
 

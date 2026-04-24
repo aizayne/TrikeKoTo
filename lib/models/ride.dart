@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../core/constants.dart';
 
-enum RideStatus { searching, accepted, completed, cancelled, unknown }
+enum RideStatus { searching, accepted, inTransit, completed, cancelled, unknown }
 
 RideStatus rideStatusFromString(String? raw) {
   switch (raw) {
@@ -10,6 +10,8 @@ RideStatus rideStatusFromString(String? raw) {
       return RideStatus.searching;
     case AppConstants.rideAccepted:
       return RideStatus.accepted;
+    case AppConstants.rideInTransit:
+      return RideStatus.inTransit;
     case AppConstants.rideCompleted:
       return RideStatus.completed;
     case AppConstants.rideCancelled:
@@ -25,6 +27,8 @@ String rideStatusToString(RideStatus s) {
       return AppConstants.rideSearching;
     case RideStatus.accepted:
       return AppConstants.rideAccepted;
+    case RideStatus.inTransit:
+      return AppConstants.rideInTransit;
     case RideStatus.completed:
       return AppConstants.rideCompleted;
     case RideStatus.cancelled:
@@ -74,6 +78,7 @@ class Ride {
   final DateTime? ratedAt;
   final DateTime? createdAt;
   final DateTime? acceptedAt;
+  final DateTime? onboardAt;
   final DateTime? completedAt;
   final DateTime? cancelledAt;
   final String? cancelledBy;
@@ -95,6 +100,7 @@ class Ride {
     this.ratedAt,
     this.createdAt,
     this.acceptedAt,
+    this.onboardAt,
     this.completedAt,
     this.cancelledAt,
     this.cancelledBy,
@@ -129,6 +135,7 @@ class Ride {
       ratedAt: (d['ratedAt'] as Timestamp?)?.toDate(),
       createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
       acceptedAt: (d['acceptedAt'] as Timestamp?)?.toDate(),
+      onboardAt: (d['onboardAt'] as Timestamp?)?.toDate(),
       completedAt: (d['completedAt'] as Timestamp?)?.toDate(),
       cancelledAt: (d['cancelledAt'] as Timestamp?)?.toDate(),
       cancelledBy: d['cancelledBy'] as String?,

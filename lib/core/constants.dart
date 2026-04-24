@@ -43,8 +43,17 @@ class AppConstants {
   static const driverSuspended = 'Suspended';
 
   /// Ride status strings — must match Firestore values byte-for-byte.
+  ///
+  /// Lifecycle:  searching → accepted → in_transit → completed
+  ///                                  ↘ cancelled (from any pre-completed state)
+  ///
+  /// `accepted` covers driver-en-route-to-pickup; `in_transit` covers
+  /// passenger-onboard-en-route-to-dropoff. The split lets the commuter
+  /// keep seeing the live map for the entire ride (not just the pickup
+  /// leg) and gives the admin a finer view of the active fleet.
   static const rideSearching = 'searching';
   static const rideAccepted = 'accepted';
+  static const rideInTransit = 'in_transit';
   static const rideCompleted = 'completed';
   static const rideCancelled = 'cancelled';
 

@@ -83,6 +83,10 @@ class _CommuterBookingScreenState extends ConsumerState<CommuterBookingScreen> {
         // visually correct for `searching`.
         return;
       case RideStatus.accepted:
+      case RideStatus.inTransit:
+        // Both states reuse the accepted phase view (live map). The
+        // view itself reads ride.status to swap its header copy and
+        // hide the cancel button once the commuter is onboard.
         if (_phase != BookingPhase.accepted) {
           setState(() => _phase = BookingPhase.accepted);
         }
@@ -158,7 +162,10 @@ class _CommuterBookingScreenState extends ConsumerState<CommuterBookingScreen> {
       case BookingPhase.scheduled:
         return 'Ride scheduled';
       case BookingPhase.accepted:
-        return 'Driver on the way';
+        // Same phase covers `accepted` (driver en route) and
+        // `in_transit` (passenger onboard). The accepted view tweaks
+        // its body copy; the title here stays generic to cover both.
+        return 'On your trip';
       case BookingPhase.rating:
         return 'Rate your trip';
       case BookingPhase.done:

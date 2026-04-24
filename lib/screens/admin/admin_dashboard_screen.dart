@@ -218,6 +218,10 @@ _RideStats _computeRideStats(List<Ride> rides) {
         s++;
         break;
       case RideStatus.accepted:
+      case RideStatus.inTransit:
+        // Both states are "an active ride in progress" from the admin's
+        // point of view. Lumping them keeps the existing 'In Progress'
+        // tile accurate without adding a separate card.
         a++;
         break;
       case RideStatus.completed:

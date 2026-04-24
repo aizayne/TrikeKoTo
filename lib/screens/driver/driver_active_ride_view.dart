@@ -8,7 +8,11 @@ import '../../providers/auth_provider.dart';
 import '../../widgets/primary_button.dart';
 
 /// What the driver sees on the dashboard once they've accepted a ride.
-/// Two terminal actions: Complete (success) and Cancel (with confirm).
+/// Two-step terminal flow:
+///   accepted     → "Passenger onboard"  → in_transit
+///   in_transit   → "Complete ride"      → completed
+///   either state → "Cancel ride"        → cancelled (with confirm)
+///
 /// The widget itself is dumb — it owns no Firestore state, only UI.
 class DriverActiveRideView extends ConsumerStatefulWidget {
   final Ride ride;
@@ -21,6 +25,23 @@ class DriverActiveRideView extends ConsumerStatefulWidget {
 
 class _DriverActiveRideViewState extends ConsumerState<DriverActiveRideView> {
   bool _busy = false;
+
+  Future<void> _markOnboard() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await ref
+          .read(firestoreServiceProvider)
+          .markPassengerOnboard(widget.ride.id);
+      // No toast on success — the UI swap from "Passenger onboard"
+      // to "Complete ride" is the visible feedback.
+    } catch (e) {
+      if (!mounted) return;
+      _toast('Could not start trip: $e', AppColors.danger);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   Future<void> _complete() async {
     if (_busy) return;
@@ -93,6 +114,13 @@ class _DriverActiveRideViewState extends ConsumerState<DriverActiveRideView> {
   @override
   Widget build(BuildContext context) {
     final ride = widget.ride;
+    final inTransit = ride.status == RideStatus.inTransit;
+
+    final headerTitle = inTransit ? 'Passenger onboard' : 'Ride in progress';
+    final headerHint = inTransit
+        ? 'Drive to the dropoff, then complete the ride.'
+        : 'Drive to the pickup, then mark passenger onboard.';
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -111,23 +139,27 @@ class _DriverActiveRideViewState extends ConsumerState<DriverActiveRideView> {
                   color: AppColors.success.withValues(alpha: 0.18),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(LucideIcons.car,
-                    size: 22, color: AppColors.success),
+                child: Icon(
+                  inTransit ? LucideIcons.userCheck : LucideIcons.car,
+                  size: 22,
+                  color: AppColors.success,
+                ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Ride in progress',
-                      style: TextStyle(
+                      headerTitle,
+                      style: const TextStyle(
                           fontSize: 16, fontWeight: FontWeight.w800),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
-                      'Drive to the pickup, then complete the ride.',
-                      style: TextStyle(color: AppColors.muted, fontSize: 12),
+                      headerHint,
+                      style: const TextStyle(
+                          color: AppColors.muted, fontSize: 12),
                     ),
                   ],
                 ),
@@ -135,7 +167,12 @@ class _DriverActiveRideViewState extends ConsumerState<DriverActiveRideView> {
             ],
           ),
           const SizedBox(height: 16),
-          _routeRow(LucideIcons.circleDot, ride.pickup, AppColors.accent),
+          _routeRow(
+            LucideIcons.circleDot,
+            ride.pickup,
+            // Once onboard, dim the pickup row — it's already done.
+            inTransit ? AppColors.muted : AppColors.accent,
+          ),
           const SizedBox(height: 6),
           Padding(
             padding: const EdgeInsets.only(left: 9),
@@ -163,12 +200,20 @@ class _DriverActiveRideViewState extends ConsumerState<DriverActiveRideView> {
             _metaRow(LucideIcons.fileText, ride.notes!),
           ],
           const SizedBox(height: 18),
-          PrimaryButton(
-            label: 'Complete ride',
-            icon: LucideIcons.checkCheck,
-            busy: _busy,
-            onPressed: _complete,
-          ),
+          if (inTransit)
+            PrimaryButton(
+              label: 'Complete ride',
+              icon: LucideIcons.checkCheck,
+              busy: _busy,
+              onPressed: _complete,
+            )
+          else
+            PrimaryButton(
+              label: 'Passenger onboard',
+              icon: LucideIcons.userPlus,
+              busy: _busy,
+              onPressed: _markOnboard,
+            ),
           const SizedBox(height: 8),
           SecondaryButton(
             label: 'Cancel ride',

@@ -354,6 +354,11 @@ class _RideCard extends StatelessWidget {
         AppColors.info,
         LucideIcons.clock
       ),
+      RideStatus.inTransit => (
+        'On Trip',
+        AppColors.info,
+        LucideIcons.car
+      ),
       RideStatus.searching => (
         'Searching',
         AppColors.warning,

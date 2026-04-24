@@ -196,6 +196,8 @@ class _AcceptedBody extends ConsumerWidget {
 
     final pickupCoords = ride.pickupCoords;
 
+    final inTransit = ride.status == RideStatus.inTransit;
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -223,7 +225,11 @@ class _AcceptedBody extends ConsumerWidget {
                       ),
                       MarkerLayer(
                         markers: [
-                          if (pickupCoords != null)
+                          // Hide the pickup pin once the commuter is
+                          // onboard — the pickup leg is done and the
+                          // remaining marker the trike is the point
+                          // of interest.
+                          if (pickupCoords != null && !inTransit)
                             Marker(
                               point:
                                   LatLng(pickupCoords.lat, pickupCoords.lng),
@@ -245,7 +251,7 @@ class _AcceptedBody extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 16),
-        const _HeaderRow(),
+        _HeaderRow(inTransit: inTransit),
         const SizedBox(height: 12),
         _DriverInfoCard(driverAsync: driverAsync),
         const SizedBox(height: 12),
@@ -253,33 +259,42 @@ class _AcceptedBody extends ConsumerWidget {
           pickup: ride.pickup,
           dropoff: ride.dropoff,
           notes: ride.notes,
+          inTransit: inTransit,
         ),
         const SizedBox(height: 18),
-        SecondaryButton(
-          label: 'Cancel ride',
-          icon: LucideIcons.x,
-          color: AppColors.danger,
-          onPressed: cancelling ? null : onCancel,
-        ),
-        const SizedBox(height: 8),
-        if (cancelling)
-          const Center(
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 6),
-              child: SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
+        // Once the commuter is onboard, cancelling no longer makes
+        // sense — they're in the trike. Firestore rules enforce this
+        // too; we hide the button so the UI doesn't tempt a 400.
+        if (!inTransit) ...[
+          SecondaryButton(
+            label: 'Cancel ride',
+            icon: LucideIcons.x,
+            color: AppColors.danger,
+            onPressed: cancelling ? null : onCancel,
+          ),
+          const SizedBox(height: 8),
+          if (cancelling)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 6),
+                child: SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
               ),
             ),
-          ),
-        const SizedBox(height: 12),
-        const Center(
+          const SizedBox(height: 12),
+        ],
+        Center(
           child: Text(
-            'Live map updates as the driver moves toward you.\n'
-            'You will be returned home automatically once the ride completes.',
+            inTransit
+                ? 'Enjoy your ride! The map updates live as you go.\n'
+                    'You can rate the trip once the driver marks it complete.'
+                : 'Live map updates as the driver moves toward you.\n'
+                    'You will be returned home automatically once the ride completes.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.muted, fontSize: 11),
+            style: const TextStyle(color: AppColors.muted, fontSize: 11),
           ),
         ),
       ],
@@ -292,23 +307,29 @@ class _AcceptedBody extends ConsumerWidget {
 // ──────────────────────────────────────────────────────────────────────────
 
 class _HeaderRow extends StatelessWidget {
-  const _HeaderRow();
+  final bool inTransit;
+  const _HeaderRow({required this.inTransit});
 
   @override
   Widget build(BuildContext context) {
+    final title = inTransit ? 'On the way to your dropoff!' : 'Driver is on the way!';
+    final subtitle = inTransit
+        ? 'Your trike is heading to your destination.'
+        : 'Your trike is heading to your pickup point.';
     return Row(
       children: [
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Driver is on the way!',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              Text(
+                title,
+                style: const TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 2),
               Text(
-                'Your trike is heading to your pickup point.',
+                subtitle,
                 style: TextStyle(
                   color: AppColors.muted.withValues(alpha: 0.9),
                   fontSize: 12,
@@ -492,11 +513,13 @@ class _RouteSummary extends StatelessWidget {
   final String pickup;
   final String dropoff;
   final String? notes;
+  final bool inTransit;
 
   const _RouteSummary({
     required this.pickup,
     required this.dropoff,
     required this.notes,
+    required this.inTransit,
   });
 
   @override
@@ -513,7 +536,8 @@ class _RouteSummary extends StatelessWidget {
         children: [
           _RouteRow(
             icon: LucideIcons.circleDot,
-            color: AppColors.accent,
+            // Pickup is done once we're onboard — dim it.
+            color: inTransit ? AppColors.muted : AppColors.accent,
             text: pickup.isEmpty ? '—' : pickup,
           ),
           Padding(

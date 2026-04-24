@@ -81,12 +81,25 @@ service cloud.firestore {
           && request.resource.data.status == 'accepted'
           && request.resource.data.assignedDriver.lower() == request.auth.token.email.lower())
         ||
-        // Assigned driver completing/cancelling their own ride
+        // Assigned driver marking the passenger as onboard
+        // (accepted → in_transit). Lets the commuter keep seeing the
+        // live map for the dropoff leg, not just the pickup leg.
+        (isSignedIn()
+          && resource.data.assignedDriver.lower() == request.auth.token.email.lower()
+          && resource.data.status == 'accepted'
+          && request.resource.data.status == 'in_transit')
+        ||
+        // Assigned driver completing/cancelling their own ride.
+        // Allowed from either 'accepted' (cancel before pickup) or
+        // 'in_transit' (drop the passenger off normally / abort mid-ride).
         (isSignedIn()
           && resource.data.assignedDriver.lower() == request.auth.token.email.lower()
           && request.resource.data.status in ['completed', 'cancelled'])
         ||
-        // Commuter cancelling (no auth) — only flips status
+        // Commuter cancelling (no auth) — only flips status. Once the
+        // commuter is onboard ('in_transit') we stop allowing this:
+        // they're in the trike, the cancel button is hidden in the UI,
+        // and the rule enforces the same on the server.
         (request.resource.data.status == 'cancelled'
           && resource.data.status in ['searching', 'accepted'])
         ||
